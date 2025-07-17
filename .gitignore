@@ -1,0 +1,18 @@
+# Visual Studio için
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Bin ve obj klasörlerini dışla
+**/bin/
+**/obj/
+
+# Kendi yapılandırma dosyaları
+*.db
+*.log
+
+# OS dosyaları
+.DS_Store
+Thumbs.db
