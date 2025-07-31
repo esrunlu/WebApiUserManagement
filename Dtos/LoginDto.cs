@@ -1,5 +1,8 @@
-﻿namespace WebApplication1.Dtos
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace WebApplication1.Dtos
 {
+    [Table ("Users")]
     public class LoginDto
     {
         public string Email { get; set; }

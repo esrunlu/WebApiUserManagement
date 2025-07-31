@@ -1,16 +1,39 @@
-﻿namespace WebApplication1.Models
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace WebApplication1.Models
 {
+    [Table("Users")]
     public class Users
     {
+        [Key]
         public int Id { get; set; }
-        public required string Name { get; set; }
-        public required string Username { get; set; }
-        public required string Email { get; set; }
 
-        public bool IsActive { get; set; }
-        public DateTime InsertDate { get; set; }
-        public string? Password { get; internal set; }
+        [Required, MaxLength(100)]
+        public string Name { get; set; }  // 
+
+        [Required, MaxLength(100)]
+        public string Username { get; set; }  //
+
+        [Required, MaxLength(100)]
+        public string Email { get; set; }
+
+        [Required]
+        public string PasswordHash { get; set; }
+
+        //public string Role { get; set; }
+
+
+
+        public bool IsActive { get; set; } = true;
+
+        public DateTime? CreatedDate { get; set; }
+
+        public ICollection<UserRole> UserRoles { get; set; }
+
+        
     }
-
 }
+
+
 

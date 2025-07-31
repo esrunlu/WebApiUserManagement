@@ -1,102 +1,152 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using WebApplication1.Data;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using System.Threading.Tasks;
 using WebApplication1.Dtos;
 using WebApplication1.Interfaces;
 using WebApplication1.Models;
-using UsersCreateDto = WebApplication1.Dtos.UsersCreateDto;
 
 namespace WebApplication1.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
-    
     public class UsersController : ControllerBase
     {
         private readonly IUserService _userService;
-        private readonly AppDbContext _context;
+        private readonly ILogger<UsersController> _logger;
 
-        public UsersController(IUserService userService)
+        public UsersController(IUserService userService, ILogger<UsersController> logger)
         {
             _userService = userService;
+            _logger = logger;
         }
+
+        // POST: api/Users/login
+        [AllowAnonymous]
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {
-            bool success = await _userService.Login(loginDto.Email, loginDto.Password);
-
-            if (!success)
-            {
-                return Unauthorized("E-posta veya şifre hatalı.");
-            }
+            var user = await _userService.Login(loginDto);
+            if (user == null)
+                return Unauthorized("E-posta veya şifre hatalı");
 
             return Ok("Giriş başarılı.");
         }
 
+        // GET: api/Users
+        [HttpGet]
+        public async Task<IActionResult> GetAllUsers()
+        {
+            _logger.LogInformation("🟢 GetAllUsers endpoint called.");
+            var users = await _userService.GetAllUsers();
+            return Ok(users);
+        }
 
+        // GET: api/Users/orderbydate
+        [HttpGet("orderbydate")]
+        public async Task<IActionResult> GetAllUsersOrderByDate()
+        {
+            var users = await _userService.GetAllUsersOrderByDate();
+            return Ok(users);
+        }
 
-        // GET: api/Users/5
+        // GET: api/Users/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<Users>> GetUserById(int id)
+        public async Task<IActionResult> GetUserById(int id)
         {
             var user = await _userService.GetUserById(id);
-
             if (user == null)
-                return NotFound();
+                return NotFound("Kullanıcı bulunamadı.");
 
             return Ok(user);
         }
 
-        // POST: api/Users
-        [HttpPost]
-        public async Task<ActionResult<Users>> PostUsers([FromBody] UsersCreateDto userDto)
+        // GET: api/Users/get-profile
+        [Authorize(Roles = "User")]
+        [HttpGet("get-profile")]
+        public IActionResult GetProfile()
         {
+            return Ok("Bu sadece User rolündekiler için");
+        }
+
+        // POST: api/Users
+        [AllowAnonymous]
+        [HttpPost]
+        public async Task<IActionResult> PostUsers([FromBody] Dtos.UsersCreateDto userDto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            string passwordHash = BCrypt.Net.BCrypt.EnhancedHashPassword(userDto.PasswordHash, 13);
+
             var user = new Users
             {
                 Name = userDto.Name,
                 Username = userDto.Username,
                 Email = userDto.Email,
-                Password = (string)_userService.HashPassword(userDto.Password) // Şifre hashleniyor
+                PasswordHash = passwordHash,
+                CreatedDate = DateTime.UtcNow,
+                IsActive = true
             };
 
-            await _userService.AddNewUser(user);
+            var addedUser = await _userService.AddNewUser(user);
+            if (addedUser == null)
+                return BadRequest("Kullanıcı eklenemedi.");
 
-            return Ok(user);//CreatedAtAction(nameof(GetUsers), new { id = user.Id }, user);
+            var userRole = new UserRole
+            {
+                UserId = addedUser.Id,
+                RoleId = 1 // Default Role ID
+            };
+
+            await _userService.AddUserRole(userRole);
+
+            return Ok(addedUser);
         }
 
-        private object GetUsers()
-        {
-            throw new NotImplementedException();
-        }
-
-        // PUT: api/Users/5
+        // PUT: api/Users/{id}
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutUser(int id, Users updatedUser)
+        public async Task<IActionResult> PutUser(int id, [FromBody] Users updatedUser)
         {
             if (id != updatedUser.Id)
                 return BadRequest("ID uyuşmuyor.");
 
             var result = await _userService.UpdateUser(updatedUser);
-
             if (!result)
-                return NotFound();
+                return NotFound("Kullanıcı bulunamadı veya güncellenemedi.");
 
             return NoContent();
         }
 
-        // DELETE: api/Users/5
+        // DELETE: api/Users/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(int id)
         {
             var deleted = await _userService.DeleteUserById(id);
-
             if (!deleted)
-                return NotFound();
+                return NotFound("Kullanıcı bulunamadı veya zaten silinmiş.");
 
             return NoContent();
         }
 
+        // PUT: api/Users/softdelete/{id}
+        [HttpPut("softdelete/{id}")]
+        public async Task<IActionResult> SoftDeleteUser(int id)
+        {
+            var result = await _userService.SoftDeleteUserById(id);
+            if (!result)
+                return NotFound("Kullanıcı bulunamadı veya zaten pasif.");
 
+            return Ok("Kullanıcı soft delete ile pasif hale getirildi.");
+        }
+
+        // GET: api/Users/withroles
+        [HttpGet("withroles")]
+        public async Task<IActionResult> GetUsersWithRoles()
+        {
+            var users = await _userService.GetUsersWithRolesFromSP();
+            return Ok(users);
+        }
     }
 }
-

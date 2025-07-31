@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using WebApplication1.Dtos;
 using WebApplication1.Models;
 
 namespace WebApplication1.Interfaces
@@ -11,7 +12,15 @@ namespace WebApplication1.Interfaces
         Task<Users> AddNewUser(Users user);
         Task<bool> UpdateUser(Users user);
         Task<bool> DeleteUserById(int id);
-        Task<bool> Login(string email, string password);
-        object HashPassword(string password);
+        Task<Users> Login(LoginDto loginDto);
+        Task<bool> SoftDeleteUserById(int id);
+        Task<List<Users>> GetAllUsersOrderByDate();
+        string HashPassword(string password);
+        //Task<string> HashPassword(string password);
+        Task<List<UserWithRoleDto>> GetUsersWithRolesFromSP();
+        Task AddUserRole(UserRole userRole);
+
+
     }
 }
+
